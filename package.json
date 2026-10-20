@@ -1,0 +1,9 @@
+{
+  "name": "central-automacoes-painel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test internal/webui/tests/*.test.js",
+    "check": "node --check internal/webui/assets/app.js && node --check internal/webui/assets/ui.js && node --check internal/webui/assets/form.js && node --check internal/webui/assets/form-model.js"
+  }
+}

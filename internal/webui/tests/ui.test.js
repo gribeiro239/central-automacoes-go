@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {esc,RequestGate,statusName,canExecute,canRetry,canCancel,duration,scheduleLabel,localInputToISO,isoToLocalInput} from '../assets/ui.js';
+
+test('untrusted text and attributes are escaped',()=>{assert.equal(esc(`<img src=x onerror="alert('x')">&`),'&lt;img src=x onerror=&quot;alert(&#39;x&#39;)&quot;&gt;&amp;');});
+test('an older asynchronous route cannot commit after a newer one',()=>{const gate=new RequestGate();const first=gate.begin();const second=gate.begin();assert.equal(gate.current(first),false);assert.equal(gate.current(second),true);gate.invalidate();assert.equal(gate.current(second),false);});
+test('eligibility includes pending retries, cancellation and current archive/enable state',()=>{const a={enabled:true,overlap_policy:'forbid'};assert.equal(canExecute(a,{pending:1}),false);assert.equal(canExecute(a,{running:1}),false);assert.equal(canExecute(a,{}),true);assert.equal(canExecute({...a,archived_at:'now'}),false);assert.equal(canRetry({status:'failed'},a),true);assert.equal(canRetry({status:'succeeded'},a),false);assert.equal(canCancel({status:'running',cancel_requested_at:'now'}),false);assert.equal(statusName({status:'running',cancel_requested_at:'now'}),'Cancelando');});
+test('duration is an interval rather than invented runtime',()=>{assert.equal(duration('2026-10-20T12:00:00Z','2026-10-20T12:00:01.200Z'),'1,2 s');assert.equal(duration(null,null),'—');assert.equal(duration('bad','bad'),'—');assert.equal(scheduleLabel({kind:'interval',interval_seconds:300}),'A cada 5 min');});
+test('local datetime filter conversion preserves the displayed local minute',()=>{const input='2026-10-20T08:30';assert.equal(isoToLocalInput(localInputToISO(input)),input);assert.equal(localInputToISO(''),'');assert.throws(()=>localInputToISO('invalid'));});

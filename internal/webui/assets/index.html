@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Central de automações: organize rotinas, acompanhe execuções e mantenha o trabalho em movimento.">
+  <title>Central — Automações</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+  <aside class="sidebar" aria-label="Navegação principal">
+    <a class="brand" href="#/" aria-label="Central, visão geral">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M23 8H12a5 5 0 0 0-5 5v11h11a7 7 0 0 0 7-7V8Z" stroke="currentColor" stroke-width="2.6"/><path d="m12 18 4-7v5h5l-5 7v-5h-4Z" fill="currentColor"/></svg></span>
+      <span>central<span class="brand-dot">.</span><small>SEU TRABALHO EM MOVIMENTO</small></span>
+    </a>
+    <div class="workspace"><span class="workspace-icon" aria-hidden="true">C</span><span>Meu workspace<small>Central de automações</small></span><span class="workspace-local">LOCAL</span></div>
+    <p class="nav-label">WORKSPACE</p>
+    <nav id="main-nav">
+      <a href="#/" data-page="overview"><span data-icon="grid"></span>Visão geral</a>
+      <a href="#/automations" data-page="automations"><span data-icon="layers"></span>Automações<span id="nav-count" class="nav-count"></span></a>
+      <a href="#/runs" data-page="runs"><span data-icon="activity"></span>Execuções</a>
+    </nav>
+    <div class="sidebar-note"><span data-icon="sparkles"></span><strong>Menos tarefas repetitivas.<br>Mais espaço para criar.</strong><p>Organize suas rotinas e acompanhe cada execução por aqui.</p></div>
+    <div class="sidebar-footer"><span class="connection-dot" id="sidebar-dot"></span><div id="sidebar-storage">Conectando ao ambiente…<small>Execução local</small></div><span data-icon="shield"></span></div>
+  </aside>
+  <div class="app-shell">
+    <header class="topbar"><div class="breadcrumbs"><span data-icon="home"></span><span>Workspace</span><span class="breadcrumb-divider">/</span><span id="breadcrumb-current">Visão geral</span></div><div class="topbar-right"><span class="live-indicator" id="connection-status"><span class="connection-dot"></span>Conectando</span><span class="topbar-divider"></span><span class="local-label">Ambiente local<span data-icon="monitor"></span></span></div></header>
+    <main id="main-content" tabindex="-1">
+      <div class="page-heading"><div><div class="eyebrow" id="page-eyebrow">SEU CENTRO DE OPERAÇÕES</div><h1 id="page-title">Visão geral</h1><p id="page-description">Uma visão clara de tudo o que acontece nas suas automações.</p></div><div class="page-actions"><button class="btn btn-secondary" type="button" id="refresh-button" aria-label="Atualizar"><span data-icon="refresh"></span><span>Atualizar</span></button><button class="btn btn-primary" type="button" id="new-automation"><span data-icon="plus"></span>Nova automação</button></div></div>
+      <div id="page-error" aria-live="polite"></div>
+      <div id="view" aria-busy="true"><div class="loading-state"><span class="spinner"></span><p>Preparando seu workspace…</p></div></div>
+      <footer class="page-footer"><span>Central de automações</span><span id="updated-at">Aguardando primeira atualização</span></footer>
+    </main>
+  </div>
+  <div class="toast-region" id="toasts" aria-live="polite" aria-atomic="false"></div>
+  <noscript><div class="noscript-message">Ative o JavaScript no navegador para usar o painel. A API continua disponível no mesmo endereço.</div></noscript>
+</body>
+</html>

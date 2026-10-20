@@ -1,0 +1,26 @@
+# Entrega: agendador e controles operacionais
+
+Solicitação: implementar tópicos 1 e 2 do roadmap, preservando API, dados e histórico da primeira entrega. Painel, autenticação e novos tipos de executor continuam fora deste pedido. Go e PostgreSQL Docker são superfícies reais de validação; usar banco de teste exclusivo, sem apagar dados de desenvolvimento. Projeto ainda não é repositório Git; não publicar nem criar commits nesta entrega. Runtime submit_plan/advance_project não está disponível: execução local com contratos, revisão e evidências.
+
+## Inventário e decisões
+
+- Agendamentos por intervalo (segundos inteiros, mínimo 1s) e cron padrão de cinco campos com fuso IANA explícito. Embutir tzdata para Windows. Exibir next_run_at em UTC; regras cron interpretadas no fuso informado. Segundos e macros cron não são suportados nesta entrega.
+- schedule.paused é independente de enabled: pausar cron/intervalo não bloqueia execução manual. Desabilitar automação bloqueia novas execuções e suspende agendamento. Retomar/reabilitar calcula próximo horário a partir da retomada, sem reproduzir o período pausado.
+- Política de atraso configurável: run_once (padrão) gera no máximo uma execução de recuperação; skip descarta horário atrasado além de misfire_grace_seconds (padrão 60). Nenhuma política reproduz backlog ilimitado. Próximo horário sempre fica no futuro após o tick.
+- Geração persistente e atômica: congelar configuração, inserir execução e avançar próximo horário juntos. Unicidade por automação/horário e locks protegem ticks concorrentes.
+- overlap_policy allow (padrão compatível) ou forbid. Forbid recusa novo enqueue/rerun se há pending/running; tick agendado ocupado avança sem gerar; Claim também serializa runs da mesma automação quando forbid para filas antigas/mudança de política. Retry automático continua sendo o mesmo run. Slot de cancelamento ativo só é liberado após Finish ou expiração.
+- Filtrar GET /runs por automation_id, status, from e to (RFC3339, inclusivos), limit (1–500, padrão 100) e offset (>=0). Aplicar filtros antes de paginação; ordem created_at desc, id desc. Rejeitar filtros inválidos. Histórico de tentativas continua acessível.
+- POST /runs/{id}/retry aceita failed/canceled e cria novo ID com parent_run_id e origin retry, usando snapshot original. Verificar enabled/archived e overlap na automação atual. Não alterar original/tentativas. POST manual usa configuração atual.
+- POST /runs/{id}/cancel: pending fica canceled sem criar tentativa; running recebe cancel_requested_at e mantém reserva enquanto worker observa e cancela contexto HTTP. Cancel solicitado antes de Finish ganha da conclusão/retry. Operação idempotente em canceled ou cancelamento já solicitado; terminal succeeded/failed retorna conflito. Cancel não desfaz efeitos externos já realizados.
+- Expiração de reserva com cancel solicitado fecha tentativa canceled, sem retry. Tokens obsoletos continuam rejeitados.
+- POST /automations/{id}/archive é idempotente, marca archived_at, desabilita e limpa próxima ocorrência sem apagar runs; trabalho já enfileirado/ativo continua. GET por ID e histórico continuam disponíveis; lista oculta arquivadas, include_archived=true as inclui. Alteração/enqueue/rerun/agendamento em arquivada são recusados.
+- Timeout e max_attempts já editáveis. Adicionar retry_policy opcional com base_delay_seconds (1–3600) e max_delay_seconds (>=base, <=86400). Sem política explícita preservar RETRY_BASE global existente. Política faz parte do snapshot.
+- Remover agendamento via PATCH remove_schedule=true; objeto schedule em PATCH substitui definição e recalcula próximo horário. Não aceitar schedule e remove_schedule juntos. Null segue o padrão existente de campo omitido.
+- API de pausa/retomada: POST /automations/{id}/schedule/pause e /resume; retorna automação atualizada. Sem agendamento/arquivada retorna conflito. Cron impossível e timezone inválido retornam 400, não falha de worker.
+- Migração 002 aditiva e versionada: preservar automações/runs/tentativas existentes; atualizar constraints de origin/status; datas e vínculo da reexecução; índices/unique de ocorrência. Não reexecutar migrações já aplicadas.
+
+Intervalos conservam a fase do horário originalmente calculado: após atraso avançam pelo número inteiro de intervalos até o próximo futuro. Cron segue o comportamento do parser robfig: horários inexistentes na mudança de DST são pulados e horários repetidos podem ocorrer duas vezes em instantes UTC distintos. Pausa idempotente não muda next_run_at se já estava no estado pedido; reenable só se aplica a desabilitadas não arquivadas. Falhas transacionais de tick serão induzidas por trigger em schema de teste, comprovando rollback real. Archive deve preservar também a execução efetiva dos trabalhos anteriores, não apenas suas linhas.
+
+## Superfícies e oráculos
+
+Testes de domínio de tempo com datas fixas (cron, fusos, DST e expressões impossíveis), contrato compartilhado memória/PostgreSQL para estado e concorrência, worker contra HTTP bloqueante para cancelamento, API real e binário com agendador acionando destino local. Migração testada partindo do esquema 001 com dados e reaplicada. Banco Docker central_validation isolado e schemas exclusivos para testes; smoke usa banco separado. Instâncias do usuário não serão encerradas.
