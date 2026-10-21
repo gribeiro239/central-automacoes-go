@@ -2,7 +2,7 @@
 
 Registro histórico da primeira entrega. O escopo atual foi ampliado para agendamento e controles operacionais em [scheduling-scope.md](scheduling-scope.md); a execução Docker já foi validada em [validation.md](validation.md).
 
-Projeto novo, local, Go 1.27 e PostgreSQL. Pasta final: `C:\Users\Jetta\Desktop\meus projetos\Go Lang 2`.
+Projeto local em Go 1.27 e PostgreSQL, organizado a partir da raiz deste repositório.
 
 ## Escopo e inventário
 

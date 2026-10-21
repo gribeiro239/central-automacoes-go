@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  go:
+    name: Go (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check Go formatting
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            printf '%s\n' "$unformatted"
+            echo '::error::Go source is not formatted. Run gofmt on the files above.'
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test without cached results
+        run: go test -count=1 ./...
+
+      - name: Build
+        run: go build ./...
+
+  postgres:
+    name: PostgreSQL 18 and Go race detector
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: central_ci
+          POSTGRES_DB: central_ci
+          POSTGRES_PASSWORD: central_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U central_ci -d central_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      CGO_ENABLED: "1"
+      TEST_DATABASE_URL: postgres://central_ci:central_ci_test@127.0.0.1:5432/central_ci?sslmode=disable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run real PostgreSQL integration and race tests
+        run: |
+          set -euo pipefail
+          : "${TEST_DATABASE_URL:?TEST_DATABASE_URL must point to the PostgreSQL service}"
+          mkdir -p .local/ci
+          go test -race -count=1 -v -json ./... | tee .local/ci/go-test-race.jsonl
+          python3 - <<'PY'
+          import json
+          import sys
+
+          required = {
+              "TestPostgresContract",
+              "TestPostgresSchedulingContract",
+              "TestPostgresPanelContract",
+          }
+          passed = set()
+          skipped = []
+          package_passed = False
+          with open(".local/ci/go-test-race.jsonl", encoding="utf-8") as stream:
+              for line in stream:
+                  event = json.loads(line)
+                  if not event.get("Package", "").endswith("/internal/postgres"):
+                      continue
+                  action = event.get("Action")
+                  test = event.get("Test")
+                  if action == "skip":
+                      skipped.append(test or "internal/postgres")
+                  if action == "pass":
+                      if test:
+                          passed.add(test)
+                      else:
+                          package_passed = True
+
+          missing = required - passed
+          for name in sorted(required & passed):
+              print(f"Verified real PostgreSQL PASS: {name}")
+          if missing or skipped or not package_passed:
+              print("PostgreSQL evidence gate failed.", file=sys.stderr)
+              if missing:
+                  print(f"Missing required PASS: {', '.join(sorted(missing))}", file=sys.stderr)
+              if skipped:
+                  print(f"Skipped PostgreSQL tests: {', '.join(skipped)}", file=sys.stderr)
+              if not package_passed:
+                  print("PostgreSQL package did not finish with PASS.", file=sys.stderr)
+              sys.exit(1)
+          PY
+
+  javascript:
+    name: JavaScript (Node 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+
+      - name: Check JavaScript syntax
+        run: npm run check
+
+      - name: Test JavaScript
+        run: npm test

@@ -61,6 +61,8 @@ npm.cmd run check
 npm.cmd test
 ```
 
+O [GitHub Actions](https://github.com/gribeiro239/central-automacoes-go/actions) executa as verificações automaticamente em pushes e pull requests: Go em Linux e Windows, PostgreSQL temporário com detector de corridas no Linux e testes JavaScript.
+
 Para experimentar uma automação HTTP local, execute `go run ./cmd/fixture` em outro terminal e cadastre a URL `http://127.0.0.1:19091/health` no painel.
 
 ## Documentação
@@ -73,3 +75,7 @@ Para experimentar uma automação HTTP local, execute `go run ./cmd/fixture` em 
 ## Limites atuais
 
 Aplicação local, sem autenticação multiusuário, com acesso restrito a loopback. As execuções têm garantia de pelo menos uma vez; evitar efeitos duplicados depende de o destino respeitar o cabeçalho `Idempotency-Key`.
+
+## Licença
+
+[MIT](LICENSE) — Copyright (c) 2026 Guilherme Ribeiro.
